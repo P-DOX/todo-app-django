@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin — Default Weekly Tasks</title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+  <main class="container">
+    <header class="admin-header">
+      <div class="admin-header-content">
+        <div class="admin-icon">⚙️</div>
+        <div>
+          <h1 class="admin-title">Default Weekly Tasks</h1>
+          <p class="admin-subtitle">Create recurring tasks that automatically appear on specific weekdays</p>
+        </div>
+      </div>
+      <a href="{% url 'index' %}" class="back-link">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Back to App
+      </a>
+    </header>
+
+    <div class="admin-layout">
+      <section class="admin-form-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="card-icon">➕</span>
+            Add New Default Task
+          </h2>
+        </div>
+        
+        <form id="default-form" class="default-form" aria-label="Add default weekly task">
+          <div class="form-group">
+            <label for="default-weekday" class="form-label">
+              <span class="label-icon">📅</span>
+              Weekday
+            </label>
+            <select id="default-weekday" class="form-select" required>
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="default-title" class="form-label">
+              <span class="label-icon">📝</span>
+              Task Title
+            </label>
+            <input id="default-title" type="text" class="form-input" placeholder="e.g., Team Meeting, Grocery Shopping" required>
+          </div>
+
+          <div class="form-group">
+            <label for="default-tab" class="form-label">
+              <span class="label-icon">🏷️</span>
+              Category
+            </label>
+            <select id="default-tab" class="form-select">
+              <option value="personal">Personal</option>
+              <option value="work">Work</option>
+            </select>
+          </div>
+
+          <button type="submit" class="form-submit-btn">
+            <span>➕</span>
+            Add Default Task
+          </button>
+        </form>
+      </section>
+
+      <section class="admin-table-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="card-icon">📋</span>
+            Your Default Tasks
+          </h2>
+          <span class="task-count" id="task-count">0 tasks</span>
+        </div>
+        
+        <div class="table-wrapper">
+          <table id="defaults-table" class="defaults-table">
+            <thead>
+              <tr>
+                <th>Weekday</th>
+                <th>Task Title</th>
+                <th>Category</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="empty-state" id="empty-state">
+            <div class="empty-icon">📭</div>
+            <p class="empty-text">No default tasks yet</p>
+            <p class="empty-hint">Add your first recurring task using the form above</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="{% static 'js/auth.js' %}?v=3.0"></script>
+  <script src="{% static 'js/admin.js' %}?v=3.1"></script>
+</body>
+</html>
