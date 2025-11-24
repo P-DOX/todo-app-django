@@ -17,10 +17,6 @@ let useServer = false
 const savedTab = localStorage.getItem('todo.currentTab')
 const DEFAULT_TAB = 'personal'
 let currentTab = savedTab || DEFAULT_TAB
-// migrate legacy saved tab names if user previously had 'gaurav'/'nishu'
-if(currentTab === 'gaurav') currentTab = 'personal'
-if(currentTab === 'nishu') currentTab = 'work'
-
 
 const taskForm = document.getElementById('task-form')
 const taskInput = document.getElementById('task-input')
@@ -61,11 +57,9 @@ function loadTasks(){
   }catch(e){
     tasks = []
   }
-  // Normalize legacy tasks (assign tab if missing) and migrate old tab names
+  // Normalize legacy tasks (assign tab if missing)
   for(const t of tasks){
     if(!t.tab) t.tab = DEFAULT_TAB
-    if(t.tab === 'gaurav') t.tab = 'personal'
-    if(t.tab === 'nishu') t.tab = 'work'
   }
 }
 
@@ -88,9 +82,33 @@ let defaults = []
 // Default creation window: don't create defaults before Nov 1 of the current year
 // and only create defaults up to this many days after today.
 const DEFAULTS_MIN_MONTH = 10 // November (0-based month index)
-const DEFAULTS_MAX_DAYS_AHEAD = 30 // create defaults up to 30 days ahead
+const DEFAULTS_MAX_DAYS_AHEAD = 60 // create defaults up to 60 days ahead
 
-function loadDefaults(){
+async function loadDefaults(){
+  const token = getToken()
+  if (token && useServer) {
+    try {
+      const res = await fetch('/api/defaults/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        defaults = data.map(d => ({
+          id: d.id,
+          weekday: d.weekday,
+          title: d.title,
+          tab: d.tab
+        }))
+        // Also save to localStorage for offline/fallback
+        const DEFAULTS_KEY = getUserStorageKey('todo.defaults.v1')
+        localStorage.setItem(DEFAULTS_KEY, JSON.stringify(defaults))
+        return
+      }
+    } catch(e) {
+      console.error('Error loading defaults from API:', e)
+    }
+  }
+  // Fallback to localStorage
   const DEFAULTS_KEY = getUserStorageKey('todo.defaults.v1')
   try{ const raw = localStorage.getItem(DEFAULTS_KEY); defaults = raw ? JSON.parse(raw) : [] }catch(e){ defaults = [] }
 }
@@ -118,7 +136,7 @@ function checkServerAndSync(){
     if(token) {
       headers['Authorization'] = 'Bearer ' + token
     }
-    return fetch('/api/tasks', { headers }).then(r => r.json()).then(serverTasks => {
+    return fetch('/api/tasks/', { headers }).then(r => r.json()).then(serverTasks => {
       const STORAGE_KEY = getUserStorageKey('todo.tasks.v1')
       const localRaw = localStorage.getItem(STORAGE_KEY)
       const localTasks = localRaw ? JSON.parse(localRaw) : []
@@ -196,32 +214,114 @@ function renderTasks(){
     return true
   })
   visible.forEach(task => taskList.appendChild(createTaskElement(task)))
+  
+  // Update tab counters
+  updateTabCounters()
 }
 
-function addTask(title){
+function updateTabCounters() {
+  const tasksForDate = tasks.filter(t => t.date === selectedDate)
+  
+  // Personal tab counter
+  const personalTasks = tasksForDate.filter(t => t.tab === 'personal')
+  const personalCompleted = personalTasks.filter(t => t.completed).length
+  const personalTotal = personalTasks.length
+  const personalCounter = document.getElementById('counter-personal')
+  if (personalCounter) {
+    personalCounter.textContent = `${personalCompleted}/${personalTotal}`
+  }
+  
+  // Work tab counter
+  const workTasks = tasksForDate.filter(t => t.tab === 'work')
+  const workCompleted = workTasks.filter(t => t.completed).length
+  const workTotal = workTasks.length
+  const workCounter = document.getElementById('counter-work')
+  if (workCounter) {
+    workCounter.textContent = `${workCompleted}/${workTotal}`
+  }
+}
+
+async function addTask(title){
   const trimmed = title.trim()
   if(!trimmed) return
   const nowIso = new Date().toISOString()
   const task = { id: Date.now().toString(), title: trimmed, completed: false, date: selectedDate, createdAt: nowIso, lastModified: nowIso, tab: currentTab }
   tasks.unshift(task)
+  
+  // Save to server first
+  const token = getToken()
+  if(useServer && token){
+    try {
+      const res = await fetch('/api/tasks/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(task)
+      })
+      if(res.ok){
+        const serverTask = await res.json()
+        // Replace local task with server version (which has proper ID)
+        const index = tasks.findIndex(t => t.id === task.id)
+        if(index >= 0) tasks[index] = serverTask
+      }
+    } catch(e){
+      console.error('Error creating task:', e)
+    }
+  }
+  
   saveTasks()
   renderTasks()
   renderCalendar(viewYear, viewMonth)
   if(typeof renderWeekTabs === 'function') renderWeekTabs()
 }
 
-function toggleCompleted(id){
+async function toggleCompleted(id){
   const t = tasks.find(x => x.id === id)
   if(!t) return
   t.completed = !t.completed
   t.lastModified = new Date().toISOString()
+  
+  // Update on server
+  const token = getToken()
+  if(useServer && token){
+    try {
+      await fetch(`/api/tasks/${id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ completed: t.completed })
+      })
+    } catch(e){
+      console.error('Error updating task:', e)
+    }
+  }
+  
   saveTasks()
   renderTasks()
   renderCalendar(viewYear, viewMonth)
   if(typeof renderWeekTabs === 'function') renderWeekTabs()
 }
 
-function deleteTask(id){
+async function deleteTask(id){
+  // Delete from server first
+  const token = getToken()
+  if(useServer && token){
+    try {
+      await fetch(`/api/tasks/${id}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+    } catch(e){
+      console.error('Error deleting task:', e)
+    }
+  }
+  
   tasks = tasks.filter(x => x.id !== id)
   saveTasks()
   renderTasks()
@@ -242,11 +342,34 @@ function startEdit(id, li){
   input.focus()
   input.select()
 
-  function commit(){
+  async function commit(){
     const val = input.value.trim()
-    if(val) t.title = val
-    else tasks = tasks.filter(x => x.id !== id)
-    t.lastModified = new Date().toISOString()
+    if(val){
+      t.title = val
+      t.lastModified = new Date().toISOString()
+      
+      // Update on server
+      const token = getToken()
+      if(useServer && token){
+        try {
+          await fetch(`/api/tasks/${id}/`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ title: t.title })
+          })
+        } catch(e){
+          console.error('Error updating task:', e)
+        }
+      }
+    } else {
+      // Delete if empty
+      await deleteTask(id)
+      return
+    }
+    
     saveTasks()
     renderTasks()
     renderCalendar(viewYear, viewMonth)
@@ -352,9 +475,9 @@ function cleanupOldTasks(){
 }
 
 // Event handlers
-taskForm.addEventListener('submit', (e) => {
+taskForm.addEventListener('submit', async (e) => {
   e.preventDefault()
-  addTask(taskInput.value)
+  await addTask(taskInput.value)
   taskInput.value = ''
   taskInput.focus()
 })
@@ -377,51 +500,93 @@ function formatMonthLabel(year, month){
 
 function startOfMonth(year, month){ return new Date(year, month, 1) }
 
-function renderCalendar(year, month){
-  // ensure we have the latest tasks before computing heatmap/counts
-  loadTasks()
-  monthLabel.textContent = formatMonthLabel(year, month)
-  daysContainer.innerHTML = ''
-  const first = startOfMonth(year, month)
-  const startDay = first.getDay() // 0..6
-  const daysInMonth = new Date(year, month+1, 0).getDate()
+// Track the current rendering operation to prevent overlapping renders
+let currentRenderPromise = null
+let renderCounter = 0
 
-  // Ensure defaults are applied for the visible calendar grid (pre-create default tasks)
-  // Compute the grid start (beginning Sunday) and end (end Saturday) for the month view
-  const gridStart = new Date(year, month, 1)
-  gridStart.setDate(gridStart.getDate() - gridStart.getDay())
-  const last = new Date(year, month, daysInMonth)
-  const gridEnd = new Date(last)
-  gridEnd.setDate(gridEnd.getDate() + (6 - last.getDay()))
-  // iterate days and apply defaults for each date in visible grid
-  for(let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)){
-    try{ applyDefaultsForDate(isoDate(d)) }catch(e){ /* ignore */ }
+async function renderCalendar(year, month){
+  // Increment counter to identify this render
+  const myRenderId = ++renderCounter
+  
+  // Wait for any ongoing render to complete
+  if(currentRenderPromise){
+    await currentRenderPromise
+    // If a newer render was initiated while we were waiting, abort this one
+    if(renderCounter !== myRenderId) return
   }
+  
+  // Start new render and track the promise
+  currentRenderPromise = (async () => {
+    // ensure we have the latest tasks before computing heatmap/counts
+    loadTasks()
+    monthLabel.textContent = formatMonthLabel(year, month)
+    daysContainer.innerHTML = ''
+    const first = startOfMonth(year, month)
+    const startDay = first.getDay() // 0..6
+    const daysInMonth = new Date(year, month+1, 0).getDate()
 
-  // previous month's tail
-  const prevMonthLastDate = new Date(year, month, 0).getDate()
-  for(let i = startDay - 1; i >= 0; i--){
-    const d = prevMonthLastDate - i
-    const date = new Date(year, month-1, d)
-    const el = renderDayCell(date, true)
-    daysContainer.appendChild(el)
-  }
+    // Ensure defaults are applied for the visible calendar grid (pre-create default tasks)
+    // Compute the grid start (beginning Sunday) and end (end Saturday) for the month view
+    const gridStart = new Date(year, month, 1)
+    gridStart.setDate(gridStart.getDate() - gridStart.getDay())
+    const last = new Date(year, month, daysInMonth)
+    const gridEnd = new Date(last)
+    gridEnd.setDate(gridEnd.getDate() + (6 - last.getDay()))
+    
+    // Collect all dates in the visible grid for batch processing
+    const datesToProcess = []
+    for(let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)){
+      const dateStr = isoDate(d)
+      const parsedDate = parseIso(dateStr)
+      if(isNaN(parsedDate)) continue
+      
+      // Apply same date checks as applyDefaultsForDate
+      const now = new Date()
+      const minDate = new Date(now.getFullYear(), DEFAULTS_MIN_MONTH, 1)
+      if(parsedDate < minDate) continue
+      const maxDate = new Date()
+      maxDate.setDate(maxDate.getDate() + DEFAULTS_MAX_DAYS_AHEAD)
+      if(parsedDate > maxDate) continue
+      
+      datesToProcess.push(dateStr)
+    }
+    
+    // Make a single batch API call for all dates
+    if(datesToProcess.length > 0){
+      await applyDefaultsForDates(datesToProcess)
+    }
 
-  // current month days
-  for(let d=1; d<=daysInMonth; d++){
-    const date = new Date(year, month, d)
-    const el = renderDayCell(date, false)
-    daysContainer.appendChild(el)
-  }
+    // Check if we're still the active render
+    if(renderCounter !== myRenderId) return
 
-  // fill to complete grid (optional)
-  while(daysContainer.children.length % 7 !== 0){
-    const day = new Date(year, month+1, 1).getDate() // placeholder
-    const el = document.createElement('div')
-    el.className = 'day other-month'
-    el.textContent = ''
-    daysContainer.appendChild(el)
-  }
+    // previous month's tail
+    const prevMonthLastDate = new Date(year, month, 0).getDate()
+    for(let i = startDay - 1; i >= 0; i--){
+      const d = prevMonthLastDate - i
+      const date = new Date(year, month-1, d)
+      const el = await renderDayCell(date, true)
+      daysContainer.appendChild(el)
+    }
+
+    // current month days
+    for(let d=1; d<=daysInMonth; d++){
+      const date = new Date(year, month, d)
+      const el = await renderDayCell(date, false)
+      daysContainer.appendChild(el)
+    }
+
+    // fill to complete grid (optional)
+    while(daysContainer.children.length % 7 !== 0){
+      const day = new Date(year, month+1, 1).getDate() // placeholder
+      const el = document.createElement('div')
+      el.className = 'day other-month'
+      el.textContent = ''
+      daysContainer.appendChild(el)
+    }
+  })()
+  
+  await currentRenderPromise
+  currentRenderPromise = null
 }
 
 // Weekly tabs rendering and navigation
@@ -527,11 +692,11 @@ function renderWeekTabs(){
     if(lvl > 0) btn.classList.add('heat-'+lvl)
     btn.appendChild(dayName)
     btn.appendChild(dayDate)
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       selectedDate = iso
       updateSelectedDateLabel()
       // apply defaults for this date and active tab before rendering
-      applyDefaultsForDate(selectedDate)
+      await applyDefaultsForDate(selectedDate)
       renderWeekTabs()
       renderCalendar(viewYear, viewMonth)
       renderTasks()
@@ -584,7 +749,52 @@ function getHeatLevel(dateStr){
   return 4
 }
 
-function applyDefaultsForDate(dateStr){
+// Apply defaults for multiple dates in a single API call
+async function applyDefaultsForDates(dates){
+  if(!dates || dates.length === 0) return false
+  
+  const token = getToken()
+  if(useServer && token){
+    try {
+      const res = await fetch('/api/defaults/apply/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ dates: dates, tab: currentTab })
+      })
+      if(res.ok){
+        const result = await res.json()
+        if(result.created > 0){
+          // Fetch updated tasks from server
+          const tasksRes = await fetch('/api/tasks/', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+          if(tasksRes.ok){
+            tasks = await tasksRes.json()
+            const STORAGE_KEY = getUserStorageKey('todo.tasks.v1')
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks))
+            return true
+          }
+        }
+        return result.created > 0
+      }
+    } catch(e){
+      console.error('Error applying defaults via batch API:', e)
+    }
+  }
+  
+  // Fallback to local-only mode - process each date
+  let anyAdded = false
+  for(const dateStr of dates){
+    const added = await applyDefaultsForDate(dateStr)
+    if(added) anyAdded = true
+  }
+  return anyAdded
+}
+
+async function applyDefaultsForDate(dateStr){
   const d = parseIso(dateStr)
   if(isNaN(d)) return false
   const now = new Date()
@@ -595,6 +805,41 @@ function applyDefaultsForDate(dateStr){
   if(d > maxDate) return false
   const wd = d.getDay()
   let added = false
+  
+  // If using server, call the backend API to apply defaults
+  const token = getToken()
+  if(useServer && token){
+    try {
+      const res = await fetch('/api/defaults/apply/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ date: dateStr, tab: currentTab })
+      })
+      if(res.ok){
+        const result = await res.json()
+        if(result.created > 0){
+          // Fetch updated tasks from server
+          const tasksRes = await fetch('/api/tasks/', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+          if(tasksRes.ok){
+            tasks = await tasksRes.json()
+            const STORAGE_KEY = getUserStorageKey('todo.tasks.v1')
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks))
+            added = true
+          }
+        }
+        return added
+      }
+    } catch(e){
+      console.error('Error applying defaults via API:', e)
+    }
+  }
+  
+  // Fallback to local-only mode
   for(const def of defaults){
     if(def.weekday !== wd) continue
     if(def.tab !== currentTab) continue
@@ -609,7 +854,7 @@ function applyDefaultsForDate(dateStr){
   return added
 }
 
-function renderDayCell(date, otherMonth){
+async function renderDayCell(date, otherMonth){
   const el = document.createElement('div')
   el.className = 'day' + (otherMonth ? ' other-month' : '')
   const dateStr = isoDate(date)
@@ -636,18 +881,21 @@ function renderDayCell(date, otherMonth){
     badge.title = `${count} task${count>1?'s':''}`
     el.appendChild(badge)
   }
-  el.addEventListener('click', () => {
+  el.addEventListener('click', async () => {
     if(otherMonth){
       // navigate to that month
       viewYear = date.getFullYear(); viewMonth = date.getMonth();
       renderCalendar(viewYear, viewMonth)
+    } else {
+      selectedDate = dateStr
+      updateSelectedDateLabel()
+      // ensure defaults exist for this date (backend only, no UI refresh)
+      await applyDefaultsForDate(selectedDate)
+      // Only update the selected state without re-rendering entire calendar
+      document.querySelectorAll('.day').forEach(d => d.classList.remove('selected'))
+      el.classList.add('selected')
+      renderTasks()
     }
-    selectedDate = dateStr
-    updateSelectedDateLabel()
-    // ensure defaults exist for this date before rendering
-    applyDefaultsForDate(selectedDate)
-    renderCalendar(viewYear, viewMonth)
-    renderTasks()
   })
   return el
 }
@@ -657,35 +905,41 @@ function updateSelectedDateLabel(){
   selectedDateLabel.textContent = `Selected: ${d.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })} — ${currentTab.charAt(0).toUpperCase() + currentTab.slice(1)}`
 }
 
-prevMonthBtn.addEventListener('click', () => { viewMonth--; if(viewMonth<0){ viewMonth=11; viewYear--; } renderCalendar(viewYear, viewMonth) })
-nextMonthBtn.addEventListener('click', () => { viewMonth++; if(viewMonth>11){ viewMonth=0; viewYear++; } renderCalendar(viewYear, viewMonth) })
+prevMonthBtn.addEventListener('click', () => { viewMonth--; if(viewMonth<0){ viewMonth=11; viewYear--; } renderCalendar(viewYear, viewMonth); if(typeof updateGoalsStatus === 'function') updateGoalsStatus() })
+nextMonthBtn.addEventListener('click', () => { viewMonth++; if(viewMonth>11){ viewMonth=0; viewYear++; } renderCalendar(viewYear, viewMonth); if(typeof updateGoalsStatus === 'function') updateGoalsStatus() })
 
 loadTasks()
-loadDefaults()
-// try enabling server storage if available; best-effort
-checkServerAndSync().then(() => {
-  // normalize tasks after server sync in case server data lacks tab metadata and migrate legacy names
-  for(const t of tasks){
-    if(!t.tab) t.tab = DEFAULT_TAB
-    if(t.tab === 'gaurav') t.tab = 'personal'
-    if(t.tab === 'nishu') t.tab = 'work'
-  }
-  // after server check, re-run cleanup and render
-  if(cleanupOldTasks()) saveTasks()
-  renderCalendar(viewYear, viewMonth)
-  if(typeof renderWeekTabs === 'function') renderWeekTabs()
-  renderTasks()
+// Load defaults asynchronously, then proceed
+loadDefaults().then(() => {
+  // try enabling server storage if available; best-effort
+  checkServerAndSync().then(() => {
+    // normalize tasks after server sync in case server data lacks tab metadata
+    for(const t of tasks){
+      if(!t.tab) t.tab = DEFAULT_TAB
+    }
+    // after server check, re-run cleanup and render
+    if(cleanupOldTasks()) saveTasks()
+    renderCalendar(viewYear, viewMonth)
+    if(typeof renderWeekTabs === 'function') renderWeekTabs()
+    renderTasks()
+    // Update auth UI after everything is loaded
+    if(typeof updateAuthUI === 'function') updateAuthUI()
+    // Update goals status summary
+    if(typeof updateGoalsStatus === 'function') updateGoalsStatus()
+    // Initialize goal status click handlers
+    if(typeof initGoalStatusHandlers === 'function') initGoalStatusHandlers()
+  })
 })
 
 // Listen for changes to defaults made in other tabs (admin page)
-window.addEventListener('storage', (e) => {
+window.addEventListener('storage', async (e) => {
   if(!e) return
   const DEFAULTS_KEY = getUserStorageKey('todo.defaults.v1')
   if(e.key === DEFAULTS_KEY){
     // reload defaults and ensure they are applied for the currently selected date/tab
-    loadDefaults()
+    await loadDefaults()
     // apply defaults for the visible selected date and re-render
-    const added = applyDefaultsForDate(selectedDate)
+    const added = await applyDefaultsForDate(selectedDate)
     if(added) renderTasks()
     renderCalendar(viewYear, viewMonth)
     if(typeof renderWeekTabs === 'function') renderWeekTabs()
@@ -700,8 +954,6 @@ for(const t of tasks){
     t.createdAt = t.createdAt || new Date().toISOString()
     t.lastModified = t.lastModified || t.createdAt
     if(!t.tab) t.tab = DEFAULT_TAB
-    if(t.tab === 'gaurav') t.tab = 'personal'
-    if(t.tab === 'nishu') t.tab = 'work'
     migrated = true
   }
 }
@@ -713,12 +965,13 @@ if(cleanupOldTasks()) saveTasks()
 updateSelectedDateLabel()
 renderCalendar(viewYear, viewMonth)
 // ensure defaults are applied for the selected date before final render
-applyDefaultsForDate(selectedDate)
-if(typeof renderWeekTabs === 'function') renderWeekTabs()
-renderTasks()
+applyDefaultsForDate(selectedDate).then(() => {
+  if(typeof renderWeekTabs === 'function') renderWeekTabs()
+  renderTasks()
+})
 
 // Tab switching logic
-function switchTab(tabId){
+async function switchTab(tabId){
   if(!tabId) return
   currentTab = tabId
   localStorage.setItem('todo.currentTab', currentTab)
@@ -726,15 +979,18 @@ function switchTab(tabId){
   // re-render calendar (counts) and tasks for the selected tab
   // show admin UI if admin tab selected
     // Removed admin UI handling as admin is on a separate page now
-  applyDefaultsForDate(selectedDate)
-  renderCalendar(viewYear, viewMonth)
-  if(typeof renderWeekTabs === 'function') renderWeekTabs()
+  await applyDefaultsForDate(selectedDate)
+  // Update tasks and selected date label without full calendar re-render
   renderTasks()
   updateSelectedDateLabel()
+  if(typeof renderWeekTabs === 'function') renderWeekTabs()
   
   // Reload level-specific tasks when switching tabs
   if (currentLevel === 'weekly') loadWeeklyTasks()
   if (currentLevel === 'monthly') loadMonthlyTasks()
+  
+  // Update goals status summary
+  if (typeof updateGoalsStatus === 'function') updateGoalsStatus()
 }
 
 window.switchTab = switchTab
@@ -899,6 +1155,7 @@ async function toggleWeeklyTask(id, completed) {
       body: JSON.stringify({ completed })
     })
     await loadWeeklyTasks()
+    if (typeof updateGoalsStatus === 'function') updateGoalsStatus()
   } catch(e) { console.error(e) }
 }
 
@@ -976,6 +1233,7 @@ async function toggleMonthlyTask(id, completed) {
       body: JSON.stringify({ completed })
     })
     await loadMonthlyTasks()
+    if (typeof updateGoalsStatus === 'function') updateGoalsStatus()
   } catch(e) { console.error(e) }
 }
 
@@ -1047,6 +1305,7 @@ async function toggleYearlyTask(id, completed) {
       body: JSON.stringify({ completed })
     })
     await loadYearlyTasks()
+    if (typeof updateGoalsStatus === 'function') updateGoalsStatus()
   } catch(e) { console.error(e) }
 }
 
@@ -1273,11 +1532,15 @@ window.changeMonth = (delta) => {
   if (currentMonth > 12) { currentMonth = 1; currentYear++ }
   if (currentMonth < 1) { currentMonth = 12; currentYear-- }
   loadMonthlyTasks()
+  // Update goals status to reflect the new month
+  if (typeof updateGoalsStatus === 'function') updateGoalsStatus()
 }
 
 window.changeYear = (delta) => {
   selectedYear += delta
   loadYearlyTasks()
+  // Update goals status to reflect the new year
+  if (typeof updateGoalsStatus === 'function') updateGoalsStatus()
 }
 
 window.addWeeklyTask = addWeeklyTask
@@ -1289,6 +1552,115 @@ window.deleteMonthlyTask = deleteMonthlyTask
 window.addYearlyTask = addYearlyTask
 window.toggleYearlyTask = toggleYearlyTask
 window.deleteYearlyTask = deleteYearlyTask
+
+// Update goals status summary
+async function updateGoalsStatus() {
+  const token = getToken()
+  if (!token) {
+    console.log('No auth token, skipping goals status update')
+    return
+  }
+  
+  // Use the calendar's viewMonth and viewYear for all status calculations
+  // This ensures status reflects the displayed calendar period
+  const displayMonth = viewMonth + 1  // viewMonth is 0-based (0=Jan, 11=Dec)
+  const displayYear = viewYear
+  
+  // For yearly status: use viewYear
+  const displayYearForYearly = viewYear
+  
+  try {
+    // Fetch all weekly tasks for current tab, then filter by displayed month
+    const weeklyRes = await fetch(`/api/weekly-tasks/?tab=${currentTab}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    
+    // Fetch monthly tasks for display month/year
+    const monthlyRes = await fetch(`/api/monthly-tasks/?month=${displayMonth}&year=${displayYear}&tab=${currentTab}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    
+    // Fetch yearly tasks for display year
+    const yearlyRes = await fetch(`/api/yearly-tasks/?year=${displayYearForYearly}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    
+    if (weeklyRes.ok) {
+      const allWeeklyData = await weeklyRes.json()
+      
+      // Filter weekly tasks to only those with week_start_date in the displayed month
+      const weeklyData = allWeeklyData.filter(task => {
+        const weekStart = new Date(task.week_start_date)
+        return weekStart.getMonth() === viewMonth && weekStart.getFullYear() === viewYear
+      })
+      
+      const completed = weeklyData.filter(t => t.completed).length
+      const total = weeklyData.length
+      const weeklyEl = document.getElementById('weekly-status')
+      const progressEl = weeklyEl?.querySelector('.goal-progress')
+      if (progressEl) {
+        progressEl.textContent = `${completed}/${total}`
+        weeklyEl.classList.toggle('completed', completed === total && total > 0)
+      }
+    }
+    
+    if (monthlyRes.ok) {
+      const monthlyData = await monthlyRes.json()
+      const completed = monthlyData.filter(t => t.completed).length
+      const total = monthlyData.length
+      const monthlyEl = document.getElementById('monthly-status')
+      const progressEl = monthlyEl?.querySelector('.goal-progress')
+      if (progressEl) {
+        progressEl.textContent = `${completed}/${total}`
+        monthlyEl.classList.toggle('completed', completed === total && total > 0)
+      }
+    } else {
+      console.error('Monthly tasks request failed:', monthlyRes.status)
+    }
+    
+    if (yearlyRes.ok) {
+      const yearlyData = await yearlyRes.json()
+      const completed = yearlyData.filter(t => t.completed).length
+      const total = yearlyData.length
+      const yearlyEl = document.getElementById('yearly-status')
+      const progressEl = yearlyEl?.querySelector('.goal-progress')
+      if (progressEl) {
+        progressEl.textContent = `${completed}/${total}`
+        yearlyEl.classList.toggle('completed', completed === total && total > 0)
+      }
+    }
+  } catch (error) {
+    console.error('Error updating goals status:', error)
+  }
+}
+
+// Add click handlers for goal status boxes
+function initGoalStatusHandlers() {
+  const weeklyEl = document.getElementById('weekly-status')
+  const monthlyEl = document.getElementById('monthly-status')
+  const yearlyEl = document.getElementById('yearly-status')
+  
+  if (weeklyEl) {
+    weeklyEl.style.cursor = 'pointer'
+    weeklyEl.addEventListener('click', () => {
+      switchLevel('weekly')
+    })
+  }
+  
+  if (monthlyEl) {
+    monthlyEl.style.cursor = 'pointer'
+    monthlyEl.addEventListener('click', () => {
+      switchLevel('monthly')
+    })
+  }
+  
+  if (yearlyEl) {
+    yearlyEl.style.cursor = 'pointer'
+    yearlyEl.addEventListener('click', () => {
+      switchLevel('yearly')
+    })
+  }
+}
 
 function switchLevel(level){
   currentLevel = level

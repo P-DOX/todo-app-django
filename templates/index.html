@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Daily Tasks — Todo App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Daily Tasks — OCD</title>
   {% load static %}
   <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 </head>
@@ -13,8 +15,8 @@
     <header class="app-header">
       <div class="header-left">
         <div class="app-logo">
-          <span class="logo-icon">✓</span>
-          <h1 class="app-title"><span style="font-size: 1.4em; margin-right: 8px;">✅</span>Todo App</h1>
+          <span class="logo-icon">◈</span>
+          <h1 class="app-title">OCD</h1>
         </div>
       </div>
       <div id="auth-area" class="auth-area">
@@ -50,6 +52,31 @@
           <h2 class="sidebar-title">Calendar</h2>
         </div>
         
+        <!-- Goals Status Summary -->
+        <div class="goals-status" id="goals-status">
+          <div class="goal-item" id="weekly-status" title="Click to view weekly tasks">
+            <span class="goal-icon">📊</span>
+            <div class="goal-info">
+              <span class="goal-label">Week</span>
+              <span class="goal-progress">-/-</span>
+            </div>
+          </div>
+          <div class="goal-item" id="monthly-status" title="Click to view monthly tasks">
+            <span class="goal-icon">📆</span>
+            <div class="goal-info">
+              <span class="goal-label">Month</span>
+              <span class="goal-progress">-/-</span>
+            </div>
+          </div>
+          <div class="goal-item" id="yearly-status" title="Click to view yearly tasks">
+            <span class="goal-icon">🎯</span>
+            <div class="goal-info">
+              <span class="goal-label">Year</span>
+              <span class="goal-progress">-/-</span>
+            </div>
+          </div>
+        </div>
+        
         <div class="calendar-container">
           <div class="calendar-header">
             <button id="prev-month" class="month-nav-btn" aria-label="Previous month">◀</button>
@@ -75,10 +102,12 @@
             <button class="tab active" data-tab="personal" id="tab-personal">
               <span class="tab-icon">👤</span>
               <span>Personal</span>
+              <span class="tab-counter" id="counter-personal">0/0</span>
             </button>
             <button class="tab" data-tab="work" id="tab-work">
               <span class="tab-icon">💼</span>
               <span>Work</span>
+              <span class="tab-counter" id="counter-work">0/0</span>
             </button>
           </div>
 
@@ -162,6 +191,6 @@
   </main>
 
   <script src="{% static 'js/auth.js' %}?v=3.0"></script>
-  <script src="{% static 'js/app.js' %}?v=3.0"></script>
+  <script src="{% static 'js/app.js' %}?v=25.0"></script>
 </body>
 </html>

@@ -14,14 +14,20 @@
   box-sizing: border-box;
 }
 
-html, body {
+html {
   height: 100%;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
 }
 
 body {
+  height: 100%;
   margin: 0;
+  padding: 0;
+  overflow-x: hidden;
   font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #1f2937;
@@ -30,21 +36,43 @@ body {
 
 .container {
   max-width: 1400px;
-  margin: 24px auto;
-  padding: 0 20px;
-  min-height: calc(100vh - 48px);
+  width: 100%;
+  margin: 8px auto;
+  padding: 0 8px;
+  min-height: calc(100vh - 16px);
+  overflow-x: hidden;
+}
+
+@media (min-width: 768px) {
+  .container {
+    margin: 24px auto;
+    padding: 0 20px;
+    min-height: calc(100vh - 48px);
+  }
 }
 
 /* App Header */
 .app-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-  padding: 20px 28px;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  padding: 12px 16px;
   background: rgba(255, 255, 255, 0.98);
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+@media (min-width: 768px) {
+  .app-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding: 20px 28px;
+    border-radius: 16px;
+  }
 }
 
 .header-left {
@@ -60,27 +88,42 @@ body {
 }
 
 .logo-icon {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
+  border-radius: 8px;
   color: white;
-  font-size: 24px;
+  font-size: 18px;
   font-weight: bold;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
+@media (min-width: 768px) {
+  .logo-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    font-size: 24px;
+  }
+}
+
 .app-title {
   margin: 0;
-  font-size: 1.75rem;
+  font-size: 1.25rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   font-weight: 700;
+}
+
+@media (min-width: 768px) {
+  .app-title {
+    font-size: 1.75rem;
+  }
 }
 
 .auth-area {
@@ -152,29 +195,51 @@ body {
 /* Level Switcher */
 .level-switcher {
   display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-  padding: 10px;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px;
   background: rgba(255, 255, 255, 0.98);
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 768px) {
+  .level-switcher {
+    gap: 12px;
+    margin-bottom: 24px;
+    padding: 10px;
+    border-radius: 16px;
+    overflow-x: visible;
+  }
 }
 
 .level-btn {
-  flex: 1;
-  min-width: 120px;
-  padding: 16px 20px;
+  flex: 0 0 auto;
+  min-width: 90px;
+  padding: 12px 12px;
   border: 2px solid transparent;
-  border-radius: 12px;
+  border-radius: 10px;
   background: transparent;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .level-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    gap: 8px;
+  }
 }
 
 .level-btn::before {
@@ -222,18 +287,30 @@ body {
 }
 
 .level-icon {
-  font-size: 2rem;
+  font-size: 1.5rem;
   position: relative;
   z-index: 1;
 }
 
+@media (min-width: 768px) {
+  .level-icon {
+    font-size: 2rem;
+  }
+}
+
 .level-name {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: #4b5563;
   position: relative;
   z-index: 1;
   transition: color 0.3s ease;
+}
+
+@media (min-width: 768px) {
+  .level-name {
+    font-size: 0.95rem;
+  }
 }
 
 .level-btn.active .level-name {
@@ -243,19 +320,35 @@ body {
 /* App Layout */
 .app-layout {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 24px;
+  grid-template-columns: 1fr;
+  gap: 12px;
   align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .app-layout {
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+  }
 }
 
 /* Calendar Sidebar */
 .calendar-sidebar {
   background: rgba(255, 255, 255, 0.98);
-  border-radius: 16px;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  position: sticky;
-  top: 24px;
+  position: relative;
+  top: 0;
+}
+
+@media (min-width: 1024px) {
+  .calendar-sidebar {
+    border-radius: 16px;
+    padding: 24px;
+    position: sticky;
+    top: 24px;
+  }
 }
 
 .sidebar-header {
@@ -267,6 +360,76 @@ body {
   font-size: 1.25rem;
   font-weight: 700;
   color: #1f2937;
+}
+
+/* Goals Status Summary */
+.goals-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 8px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  border-radius: 10px;
+  border: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.goal-item {
+  flex: 1 1 calc(33.333% - 6px);
+  min-width: 70px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 6px;
+  background: white;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  text-align: center;
+  cursor: pointer;
+}
+
+.goal-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+}
+
+.goal-item:active {
+  transform: translateY(0);
+}
+
+.goal-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.goal-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  width: 100%;
+}
+
+.goal-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.goal-progress {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1f2937;
+  white-space: nowrap;
+}
+
+.goal-item.completed .goal-progress {
+  color: #16a34a;
 }
 
 .calendar-container {
@@ -428,6 +591,9 @@ body {
   padding: 36px 40px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   min-height: 600px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 .tasks-toolbar {
@@ -465,6 +631,21 @@ body {
   font-size: 1.1rem;
 }
 
+.tab-counter {
+  font-size: 0.75rem;
+  background: rgba(102, 126, 234, 0.15);
+  color: #667eea;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.tab.active .tab-counter {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
 .tab:hover:not(.active) {
   background: rgba(102, 126, 234, 0.08);
   color: #667eea;
@@ -479,15 +660,26 @@ body {
 .settings-link {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 10px;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
   text-decoration: none;
   color: #6b7280;
   font-weight: 600;
+  font-size: 0.85rem;
   transition: all 0.2s ease;
   border: 2px solid transparent;
-  margin-bottom: 28px;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 768px) {
+  .settings-link {
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 1rem;
+    margin-bottom: 28px;
+  }
 }
 
 .settings-link:hover {
@@ -497,8 +689,16 @@ body {
 }
 
 .settings-link svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .settings-link svg {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 /* Week Controls */
@@ -1022,50 +1222,13 @@ button.clear:hover {
 }
 
 /* Responsive */
-@media (max-width: 1024px) {
-  .app-layout {
-    grid-template-columns: 1fr;
-  }
-  
-  .calendar-sidebar {
-    position: relative;
-    top: 0;
-  }
-  
-  .tasks-panel {
-    padding: 24px 20px;
-  }
-}
-
 @media (max-width: 768px) {
-  .container {
-    margin: 8px;
-    padding: 0 8px;
-  }
-  
-  .app-header {
-    flex-direction: column;
-    gap: 16px;
-    padding: 16px;
-    align-items: flex-start;
-  }
-  
   .header-left {
     width: 100%;
   }
   
   .app-logo {
     flex-wrap: wrap;
-  }
-  
-  .app-title {
-    font-size: 1.25rem;
-  }
-  
-  .logo-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
   }
   
   .auth-area {
@@ -1118,6 +1281,7 @@ button.clear:hover {
   
   .tasks-panel {
     padding: 16px 12px;
+    min-height: auto;
   }
   
   .tasks-toolbar {
@@ -1297,55 +1461,47 @@ button.clear:hover {
     margin: 4px;
     padding: 0 4px;
   }
-  
+
   .app-header {
     padding: 12px;
   }
-  
+
   .app-title {
     font-size: 1.1rem;
   }
-  
+
   .logo-icon {
     width: 36px;
     height: 36px;
     font-size: 18px;
   }
-  
+
   .level-switcher {
     gap: 4px;
     padding: 4px;
   }
-  
+
   .level-btn {
     min-width: 60px;
     padding: 8px 6px;
   }
-  
+
   .level-icon {
     font-size: 1.2rem;
   }
-  
+
   .level-name {
     font-size: 0.7rem;
   }
-  
+
   .tasks-panel {
     padding: 12px 8px;
+    min-height: auto;
   }
-  
+
   .tab {
     padding: 8px 10px;
     font-size: 0.85rem;
-  }
-  
-  .settings-link {
-    padding: 8px 12px;
-    font-size: 0.85rem;
-  }
-  
-  .settings-link span {
-    display: none;
   }
   
   .week-tab {

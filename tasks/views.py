@@ -120,14 +120,40 @@ class DefaultTaskViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def apply(self, request):
         """
-        Apply default tasks for a specific date.
+        Apply default tasks for a specific date or batch of dates.
+        Supports both single date and batch processing.
         """
         date_str = request.data.get('date')
+        dates = request.data.get('dates')  # Array of dates for batch processing
         tab = request.data.get('tab', 'personal')
         
+        # Batch processing
+        if dates:
+            if not isinstance(dates, list):
+                return Response(
+                    {'error': 'dates must be an array'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            total_created = 0
+            for date_item in dates:
+                try:
+                    target_date = datetime.strptime(date_item, '%Y-%m-%d').date()
+                    created_count = DefaultTask.apply_defaults_for_date(
+                        request.user, 
+                        target_date, 
+                        tab
+                    )
+                    total_created += created_count
+                except ValueError:
+                    continue  # Skip invalid dates
+            
+            return Response({'created': total_created})
+        
+        # Single date processing (backward compatibility)
         if not date_str:
             return Response(
-                {'error': 'date required'}, 
+                {'error': 'date or dates required'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -392,7 +418,7 @@ def login_view(request):
             response.set_cookie(
                 'auth_token', 
                 token,
-                httponly=True,
+                httponly=False,  # Changed to False so JavaScript can read it
                 secure=False,
                 samesite='Lax',
                 max_age=7*24*60*60
@@ -480,7 +506,7 @@ def register_view(request):
             response.set_cookie(
                 'auth_token', 
                 token,
-                httponly=True,
+                httponly=False,  # Changed to False so JavaScript can read it
                 secure=False,
                 samesite='Lax',
                 max_age=7*24*60*60

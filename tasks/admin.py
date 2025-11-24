@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
-from .models import Task, DefaultTask
+from .models import Task, DefaultTask, WeeklyTask, MonthlyTask, YearlyTask
 
 User = get_user_model()
 
@@ -69,3 +69,80 @@ class DefaultTaskAdmin(admin.ModelAdmin):
         if request.user.is_superuser:
             return qs
         return qs.filter(user=request.user)
+
+
+@admin.register(WeeklyTask)
+class WeeklyTaskAdmin(admin.ModelAdmin):
+    list_display = ['title', 'week_start_date', 'week_end_date', 'completed', 'tab', 'user', 'created_at']
+    list_filter = ['completed', 'tab', 'week_start_date', 'user']
+    search_fields = ['title', 'user__username', 'user__email']
+    date_hierarchy = 'week_start_date'
+    list_editable = ['completed']
+    readonly_fields = ['created_at', 'last_modified', 'week_end_date']
+    
+    fieldsets = (
+        ('Weekly Task Information', {
+            'fields': ('user', 'title', 'completed', 'week_start_date', 'week_end_date', 'tab')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'last_modified'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(user=request.user)
+
+
+@admin.register(MonthlyTask)
+class MonthlyTaskAdmin(admin.ModelAdmin):
+    list_display = ['title', 'month', 'year', 'completed', 'priority', 'tab', 'user', 'created_at']
+    list_filter = ['completed', 'priority', 'tab', 'month', 'year', 'user']
+    search_fields = ['title', 'user__username', 'user__email']
+    list_editable = ['completed', 'priority']
+    readonly_fields = ['created_at', 'last_modified']
+    
+    fieldsets = (
+        ('Monthly Task Information', {
+            'fields': ('user', 'title', 'completed', 'month', 'year', 'tab', 'priority')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'last_modified'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(user=request.user)
+
+
+@admin.register(YearlyTask)
+class YearlyTaskAdmin(admin.ModelAdmin):
+    list_display = ['title', 'year', 'quarter', 'completed', 'user', 'created_at']
+    list_filter = ['completed', 'quarter', 'year', 'user']
+    search_fields = ['title', 'user__username', 'user__email']
+    list_editable = ['completed', 'quarter']
+    readonly_fields = ['created_at', 'last_modified']
+    
+    fieldsets = (
+        ('Yearly Task Information', {
+            'fields': ('user', 'title', 'completed', 'year', 'quarter')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'last_modified'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(user=request.user)
+

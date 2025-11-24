@@ -36,19 +36,41 @@
         
         <form id="default-form" class="default-form" aria-label="Add default weekly task">
           <div class="form-group">
-            <label for="default-weekday" class="form-label">
+            <label class="form-label">
               <span class="label-icon">📅</span>
-              Weekday
+              Weekdays
+              <small style="font-weight: normal; color: #666; margin-left: 8px;">(Select one or more)</small>
             </label>
-            <select id="default-weekday" class="form-select" required>
-              <option value="0">Sunday</option>
-              <option value="1">Monday</option>
-              <option value="2">Tuesday</option>
-              <option value="3">Wednesday</option>
-              <option value="4">Thursday</option>
-              <option value="5">Friday</option>
-              <option value="6">Saturday</option>
-            </select>
+            <div id="weekday-checkboxes" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; transition: all 0.2s;">
+                <input type="checkbox" name="weekday" value="0" style="cursor: pointer;">
+                <span>Sunday</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; transition: all 0.2s;">
+                <input type="checkbox" name="weekday" value="1" checked style="cursor: pointer;">
+                <span>Monday</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; transition: all 0.2s;">
+                <input type="checkbox" name="weekday" value="2" style="cursor: pointer;">
+                <span>Tuesday</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; transition: all 0.2s;">
+                <input type="checkbox" name="weekday" value="3" style="cursor: pointer;">
+                <span>Wednesday</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; transition: all 0.2s;">
+                <input type="checkbox" name="weekday" value="4" style="cursor: pointer;">
+                <span>Thursday</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; transition: all 0.2s;">
+                <input type="checkbox" name="weekday" value="5" style="cursor: pointer;">
+                <span>Friday</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; transition: all 0.2s;">
+                <input type="checkbox" name="weekday" value="6" style="cursor: pointer;">
+                <span>Saturday</span>
+              </label>
+            </div>
           </div>
 
           <div class="form-group">
@@ -109,6 +131,16 @@
   </main>
 
   <script src="{% static 'js/auth.js' %}?v=3.0"></script>
-  <script src="{% static 'js/admin.js' %}?v=3.1"></script>
+  <script src="{% static 'js/admin.js' %}?v=5.0"></script>
+  <style>
+    #weekday-checkboxes label:hover {
+      background-color: #f5f5f5;
+      border-color: #667eea;
+    }
+    #weekday-checkboxes input[type="checkbox"]:checked + span {
+      font-weight: 600;
+      color: #667eea;
+    }
+  </style>
 </body>
 </html>
